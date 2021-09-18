@@ -17,12 +17,11 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-void setup() {
-  // put your setup code here, to run once:
+#ifndef BEA_INCLUDE_H_
+#define BEA_INCLUDE_H_
 
-}
+#define BEA_I2C_ADDRESS    (0x12)
 
-void loop() {
-  // put your main code here, to run repeatedly:
+#define BEA_RAND_SEED      (1234567)
 
-}
+#endif // BEA_INCLUDE_H_
