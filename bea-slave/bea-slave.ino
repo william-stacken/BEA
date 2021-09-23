@@ -20,8 +20,8 @@
 #include <bea.h>
 #include <bea/Wire.h>
 
-static int byte_count = 0;
-static int bit_err_count = 0;
+static long int byte_count = 0;
+static long int bit_err_count = 0;
 
 static bool isRecv;
 
@@ -53,7 +53,7 @@ void recvCallback(int howMany)
 void sendCallback()
 {
 	uint8_t b;
-	int chunk = (byte_count > BUFFER_LENGTH) ? BUFFER_LENGTH : byte_count;
+	long int chunk = (byte_count > BUFFER_LENGTH) ? BUFFER_LENGTH : byte_count;
 
 	if (isRecv) {
 		BEA_DBG_PRINTLN();
@@ -63,7 +63,7 @@ void sendCallback()
 		BEA_DBG_PRINT("# Sent: ");
 		isRecv = false;
 	}
-	for (int i = 0; i < chunk; i++) {
+	for (long int i = 0; i < chunk; i++) {
 		b = random(256);
 		BEA_DBG_PRINT(b);
 		BEA_DBG_PRINT(" ");

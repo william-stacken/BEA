@@ -22,9 +22,11 @@
 
 long int readInt()
 {
-	char c = '\0';
+	char c;
 	char buf[11];
 	int pos;
+	long int res = 0;
+	long int e = 1;
 	for (pos = 0; pos < sizeof(buf) / sizeof(buf[0]); pos++) {
 		while (Serial.available() == 0);
 
@@ -42,9 +44,12 @@ long int readInt()
 		}
 		buf[pos] = c;
 	}
-	buf[pos] = '\0';
+	for (int i = pos - 1; i >= 0; i--) {
+		res += (long int)(buf[i] - '0') * e;
+		e *= 10;
+	}
 
-	return atoi(buf);
+	return res;
 }
 
 void setup()
@@ -59,9 +64,9 @@ void setup()
 
 void loop()
 {
-	int byte_count;
-	int bit_err_count = 0;
-	int chunk;
+	long int byte_count;
+	long int bit_err_count = 0;
+	long int chunk;
 	uint8_t b;
 
 	Serial.println("# Enter the amount of data in bytes to send for each frequency and press the ");
@@ -80,10 +85,10 @@ void loop()
 		Serial.print(BEA_FREQs[f]);
 		Serial.println(" Hz...");
 		BEA_DBG_PRINT("# Sent: ");
-		for (int j = byte_count; j > 0; j -= BUFFER_LENGTH) {
-			chunk = (byte_count > BUFFER_LENGTH) ? BUFFER_LENGTH : byte_count;
+		for (long int j = byte_count; j > 0; j -= BUFFER_LENGTH) {
+			chunk = (j > BUFFER_LENGTH) ? BUFFER_LENGTH : j;
 			Wire.beginTransmission(BEA_I2C_ADDRESS);
-			for (int i = 0; i < chunk; i++) {
+			for (long int i = 0; i < chunk; i++) {
 				b = random(256);
 				BEA_DBG_PRINT(b);
 				BEA_DBG_PRINT(" ");
@@ -96,8 +101,8 @@ void loop()
 		// Read prng sequence from slave and count bit errors
 		Serial.println("# Send complete, receiving...");
 		BEA_DBG_PRINT("# Received: ");
-		for (int j = byte_count; j > 0; j -= BUFFER_LENGTH) {
-			chunk = (byte_count > BUFFER_LENGTH) ? BUFFER_LENGTH : byte_count;
+		for (long int j = byte_count; j > 0; j -= BUFFER_LENGTH) {
+			chunk = (j > BUFFER_LENGTH) ? BUFFER_LENGTH : j;
 			Wire.requestFrom(BEA_I2C_ADDRESS, chunk);
 			while (Wire.available()) {
 				b = Wire.read();
