@@ -23,46 +23,54 @@
 static int byte_count = 0;
 static int bit_err_count = 0;
 
+static bool isRecv;
+
 void recvCallback(int howMany)
 {
-	int len = 0;
 	uint8_t b;
+
+  if (byte_count <= 0) {
+    Serial.println("# Receiving... ");
+    byte_count = 0;
+    isRecv = true;
+  }
 
 	while (Wire.available()) {
 		b = Wire.read();
-		len++;
+		byte_count++;
 		for (int r = random(256) ^ b; r != 0; r >>= 1) {
 			if (r & 0x1) {
 				bit_err_count++;
 			}
 		}
 	}
-	byte_count += len;
 }
 
 // Will be called by the master after it has finished sending data
 void sendCallback()
 {
 	uint8_t b;
+  int chunk = (byte_count > BUFFER_LENGTH) ? BUFFER_LENGTH : byte_count;
 
-	// Print resulting bit error count three times for redundancy
-	Serial.println();
-	Serial.print("# Bit error count in master sequence:");
-	Serial.println(bit_err_count);
-	Serial.println(bit_err_count);
-	Serial.println(bit_err_count);
-	bit_err_count = 0;
-
-	Serial.print("# Sending ");
-	Serial.print(byte_count);
-	Serial.println(" bytes...");
-	for (int i = 0; i < byte_count; i++) {
+  if (isRecv) {
+    Serial.print("# Recieve complete, sending ");
+    Serial.print(byte_count);
+    Serial.println(" bytes...");
+    isRecv = false;
+  }
+	for (int i = 0; i < chunk; i++) {
 		Wire.write(random(256));
 	}
-	byte_count = 0;
+	byte_count -= chunk;
 
-	Serial.println("# Send complete.");
-	Serial.println();
+  if (byte_count <= 0) {
+    // Print resulting bit error count three times for redundancy
+    Serial.println("# Bit error count in master sequence:");
+    Serial.println(bit_err_count);
+    Serial.println(bit_err_count);
+    Serial.println(bit_err_count);
+    bit_err_count = 0;
+  }
 }
 
 void setup()

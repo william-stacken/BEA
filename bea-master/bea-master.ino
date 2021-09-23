@@ -64,10 +64,11 @@ void loop()
 {
 	int byte_count;
 	int bit_err_count = 0;
+  int chunk;
 	uint8_t b;
 
-	Serial.print("# Enter the amount of data in bytes to send for each frequency and press the ");
-	Serial.print("enter key, or simply press the enter key for the default amount of ");
+	Serial.println("# Enter the amount of data in bytes to send for each frequency and press the ");
+	Serial.print("# enter key, or simply press the enter key for the default amount of ");
 	Serial.print(BEA_DEFAULT_LEN);
 	Serial.println(" bytes.");
 	byte_count = readInt();
@@ -81,24 +82,28 @@ void loop()
 		Serial.print(" bytes with frequency ");
 		Serial.print(BEA_FREQs[f]);
 		Serial.println(" Hz...");
-		Wire.beginTransmission(BEA_I2C_ADDRESS);
-		for (int i = 0; i < byte_count; i++) {
-			Wire.write(random(256));
-		}
-		Wire.endTransmission();
-
+    for (int j = byte_count; j > 0; j -= BUFFER_LENGTH) {
+      chunk = (byte_count > BUFFER_LENGTH) ? BUFFER_LENGTH : byte_count;
+  		Wire.beginTransmission(BEA_I2C_ADDRESS);
+  		for (int i = 0; i < chunk; i++) {
+  			Wire.write(random(256));
+  		}
+  		Wire.endTransmission();
+    }
 		// Read prng sequence from slave and count bit errors
-		Serial.println("# Send complete, reading...");
-		Wire.requestFrom(BEA_I2C_ADDRESS, byte_count);
-		while (Wire.available()) {
-			b = Wire.read();
-			for (int r = random(256) ^ b; r != 0; r >>= 1) {
-				if (r & 0x1) {
-					bit_err_count++;
-				}
-			}
-		}
-
+		Serial.println("# Send complete, receiving...");
+    for (int j = byte_count; j > 0; j -= BUFFER_LENGTH) {
+      chunk = (byte_count > BUFFER_LENGTH) ? BUFFER_LENGTH : byte_count;
+  		Wire.requestFrom(BEA_I2C_ADDRESS, chunk);
+  		while (Wire.available()) {
+  			b = Wire.read();
+  			for (int r = random(256) ^ b; r != 0; r >>= 1) {
+  				if (r & 0x1) {
+  					bit_err_count++;
+  				}
+  			}
+  		}
+    }
 		// Print resulting bit error count three times for redundancy
 		Serial.println("# Bit error count in slave sequence:");
 		Serial.println(bit_err_count);
