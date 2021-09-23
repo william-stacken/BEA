@@ -17,63 +17,68 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-extern "C" {
-  #include <bea.h>
-  #include <bea/twi.h>
-}
+#include <bea.h>
+#include <bea/Wire.h>
 
-static int seq_count = 0;
+static int byte_count = 0;
 static int bit_err_count = 0;
 
-void recvCallback(uint8_t *data, int len)
+void recvCallback(int howMany)
 {
-  if (data == NULL || len < 0) {
-    return;
-  }
+	int len = 0;
+	uint8_t b;
 
-  for (int i = 0; i < len; i++) {
-    for (int r = random(256) ^ data[i]; r != 0; r >>= 1) {
-      if (r & 0x1) {
-        bit_err_count++;
-      }
-    }
-  }
-  seq_count += len;
+	while (Wire.available()) {
+		b = Wire.read();
+		len++;
+		for (int r = random(256) ^ b; r != 0; r >>= 1) {
+			if (r & 0x1) {
+				bit_err_count++;
+			}
+		}
+	}
+	byte_count += len;
 }
 
 // Will be called by the master after it has finished sending data
 void sendCallback()
 {
-  uint8_t b;
-  // Print resulting bit error count three times for redundancy
-  Serial.println(bit_err_count);
-  Serial.println(bit_err_count);
-  Serial.println(bit_err_count);
-  bit_err_count = 0;
+	uint8_t b;
 
-  randomSeed(BEA_RAND_SEED);
+	// Print resulting bit error count three times for redundancy
+	Serial.println();
+	Serial.print("# Bit error count in master sequence:");
+	Serial.println(bit_err_count);
+	Serial.println(bit_err_count);
+	Serial.println(bit_err_count);
+	bit_err_count = 0;
 
-  for (int i = 0; i < seq_count; i++) {
-    b = random(256);
-    twi_transmit(&b, 1)
-  }
+	Serial.print("# Sending ");
+	Serial.print(byte_count);
+	Serial.println(" bytes...");
+	for (int i = 0; i < byte_count; i++) {
+		Wire.write(random(256));
+	}
+	byte_count = 0;
+
+	Serial.println("# Send complete.");
+	Serial.println();
 }
 
 void setup()
 {
+	randomSeed(BEA_RAND_SEED);
+
 	Serial.begin(9600);
+	Wire.begin(BEA_I2C_ADDRESS);
+	Wire.onReceive(recvCallback);
+	Wire.onRequest(sendCallback);
 
-  randomSeed(BEA_RAND_SEED);
-
-	twi_init();
-  twi_setAddress(BEA_I2C_ADDRESS);
-  twi_attachSlaveRxEvent(recvCallback);
-  twi_attachSlaveTxEvent(sendCallback);
-
-	Serial.println("BEA slave ready");
+	Serial.println("# BEA slave ready");
 }
 
 void loop()
 {
-  delay(100);
+	// Do nothing
+	delay(100);
 }

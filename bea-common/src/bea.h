@@ -24,4 +24,9 @@
 
 #define BEA_RAND_SEED      (1234567)
 
+#define BEA_DEFAULT_LEN    (1000000)
+
+// Bus clock frequencies in Hz
+static const long int BEA_FREQs[] = {50000, 100000, 200000, 400000};
+
 #endif // BEA_INCLUDE_H_
