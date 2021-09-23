@@ -20,6 +20,17 @@
 #ifndef BEA_INCLUDE_H_
 #define BEA_INCLUDE_H_
 
+// Uncomment to enable verbose prints
+//#define BEA_DEBUG
+
+#ifdef BEA_DEBUG
+	#define BEA_DBG_PRINT(a) Serial.print(a)
+	#define BEA_DBG_PRINTLN(a) Serial.println(a)
+#else
+	#define BEA_DBG_PRINT(a)
+	#define BEA_DBG_PRINTLN(a)
+#endif
+
 #define BEA_I2C_ADDRESS    (0x12)
 
 #define BEA_RAND_SEED      (1234567)

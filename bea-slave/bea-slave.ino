@@ -29,14 +29,17 @@ void recvCallback(int howMany)
 {
 	uint8_t b;
 
-  if (byte_count <= 0) {
-    Serial.println("# Receiving... ");
-    byte_count = 0;
-    isRecv = true;
-  }
+	if (byte_count <= 0) {
+		Serial.println("# Receiving... ");
+		BEA_DBG_PRINT("# Received: ");
+		byte_count = 0;
+		isRecv = true;
+	}
 
 	while (Wire.available()) {
 		b = Wire.read();
+		BEA_DBG_PRINT(b);
+		BEA_DBG_PRINT(" ");
 		byte_count++;
 		for (int r = random(256) ^ b; r != 0; r >>= 1) {
 			if (r & 0x1) {
@@ -50,27 +53,33 @@ void recvCallback(int howMany)
 void sendCallback()
 {
 	uint8_t b;
-  int chunk = (byte_count > BUFFER_LENGTH) ? BUFFER_LENGTH : byte_count;
+	int chunk = (byte_count > BUFFER_LENGTH) ? BUFFER_LENGTH : byte_count;
 
-  if (isRecv) {
-    Serial.print("# Recieve complete, sending ");
-    Serial.print(byte_count);
-    Serial.println(" bytes...");
-    isRecv = false;
-  }
+	if (isRecv) {
+		BEA_DBG_PRINTLN();
+		Serial.print("# Recieve complete, sending ");
+		Serial.print(byte_count);
+		Serial.println(" bytes...");
+		BEA_DBG_PRINT("# Sent: ");
+		isRecv = false;
+	}
 	for (int i = 0; i < chunk; i++) {
-		Wire.write(random(256));
+		b = random(256);
+		BEA_DBG_PRINT(b);
+		BEA_DBG_PRINT(" ");
+		Wire.write(b);
 	}
 	byte_count -= chunk;
 
-  if (byte_count <= 0) {
-    // Print resulting bit error count three times for redundancy
-    Serial.println("# Bit error count in master sequence:");
-    Serial.println(bit_err_count);
-    Serial.println(bit_err_count);
-    Serial.println(bit_err_count);
-    bit_err_count = 0;
-  }
+	if (byte_count <= 0) {
+		// Print resulting bit error count three times for redundancy
+		BEA_DBG_PRINTLN();
+		Serial.println("# Bit error count in master sequence:");
+		Serial.println(bit_err_count);
+		Serial.println(bit_err_count);
+		Serial.println(bit_err_count);
+		bit_err_count = 0;
+	}
 }
 
 void setup()

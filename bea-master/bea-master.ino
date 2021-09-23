@@ -44,9 +44,6 @@ long int readInt()
 	}
 	buf[pos] = '\0';
 
-	while (Serial.available() != 0) {
-		(void) Serial.read();
-	}
 	return atoi(buf);
 }
 
@@ -64,7 +61,7 @@ void loop()
 {
 	int byte_count;
 	int bit_err_count = 0;
-  int chunk;
+	int chunk;
 	uint8_t b;
 
 	Serial.println("# Enter the amount of data in bytes to send for each frequency and press the ");
@@ -82,28 +79,39 @@ void loop()
 		Serial.print(" bytes with frequency ");
 		Serial.print(BEA_FREQs[f]);
 		Serial.println(" Hz...");
-    for (int j = byte_count; j > 0; j -= BUFFER_LENGTH) {
-      chunk = (byte_count > BUFFER_LENGTH) ? BUFFER_LENGTH : byte_count;
-  		Wire.beginTransmission(BEA_I2C_ADDRESS);
-  		for (int i = 0; i < chunk; i++) {
-  			Wire.write(random(256));
-  		}
-  		Wire.endTransmission();
-    }
+		BEA_DBG_PRINT("# Sent: ");
+		for (int j = byte_count; j > 0; j -= BUFFER_LENGTH) {
+			chunk = (byte_count > BUFFER_LENGTH) ? BUFFER_LENGTH : byte_count;
+			Wire.beginTransmission(BEA_I2C_ADDRESS);
+			for (int i = 0; i < chunk; i++) {
+				b = random(256);
+				BEA_DBG_PRINT(b);
+				BEA_DBG_PRINT(" ");
+				Wire.write(b);
+			}
+			Wire.endTransmission();
+		}
+		BEA_DBG_PRINTLN();
+
 		// Read prng sequence from slave and count bit errors
 		Serial.println("# Send complete, receiving...");
-    for (int j = byte_count; j > 0; j -= BUFFER_LENGTH) {
-      chunk = (byte_count > BUFFER_LENGTH) ? BUFFER_LENGTH : byte_count;
-  		Wire.requestFrom(BEA_I2C_ADDRESS, chunk);
-  		while (Wire.available()) {
-  			b = Wire.read();
-  			for (int r = random(256) ^ b; r != 0; r >>= 1) {
-  				if (r & 0x1) {
-  					bit_err_count++;
-  				}
+		BEA_DBG_PRINT("# Received: ");
+		for (int j = byte_count; j > 0; j -= BUFFER_LENGTH) {
+			chunk = (byte_count > BUFFER_LENGTH) ? BUFFER_LENGTH : byte_count;
+			Wire.requestFrom(BEA_I2C_ADDRESS, chunk);
+			while (Wire.available()) {
+				b = Wire.read();
+				BEA_DBG_PRINT(b);
+				BEA_DBG_PRINT(" ");
+				for (int r = random(256) ^ b; r != 0; r >>= 1) {
+					if (r & 0x1) {
+						bit_err_count++;
+					}
+				}
   			}
-  		}
-    }
+		}
+		BEA_DBG_PRINTLN();
+
 		// Print resulting bit error count three times for redundancy
 		Serial.println("# Bit error count in slave sequence:");
 		Serial.println(bit_err_count);
@@ -114,4 +122,9 @@ void loop()
 
 	Serial.println("# Experiment complete!");
 	Serial.println();
+
+	// Clear the serial receive buffer
+	while (Serial.available() != 0) {
+		(void) Serial.read();
+	}
 }

@@ -18,6 +18,7 @@
 
   Modified 2012 by Todd Krein (todd@krein.org) to implement repeated starts
   Modified 2020 by Greyson Christoforo (grey@christoforo.net) to implement timeouts
+  Modified 2021 by William Stackenäs (w.stackenas@gmail.com) to use twi buffer length
 */
 
 #ifndef TwoWire_h
@@ -26,7 +27,9 @@
 #include <inttypes.h>
 #include "Stream.h"
 
-#define BUFFER_LENGTH 128
+#include "utility/twi.h"
+
+#define BUFFER_LENGTH (TWI_BUFFER_LENGTH)
 
 // WIRE_HAS_END means Wire has end()
 #define WIRE_HAS_END 1
