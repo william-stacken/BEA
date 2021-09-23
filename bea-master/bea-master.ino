@@ -67,7 +67,13 @@ void loop()
 	long int byte_count;
 	long int bit_err_count = 0;
 	long int chunk;
+	int attempts;
 	uint8_t b;
+
+	// Clear the serial receive buffer
+	while (Serial.available() != 0) {
+		(void) Serial.read();
+	}
 
 	Serial.println("# Enter the amount of data in bytes to send for each frequency and press the ");
 	Serial.print("# enter key, or simply press the enter key for the default amount of ");
@@ -87,14 +93,25 @@ void loop()
 		BEA_DBG_PRINT("# Sent: ");
 		for (long int j = byte_count; j > 0; j -= BUFFER_LENGTH) {
 			chunk = (j > BUFFER_LENGTH) ? BUFFER_LENGTH : j;
-			Wire.beginTransmission(BEA_I2C_ADDRESS);
-			for (long int i = 0; i < chunk; i++) {
-				b = random(256);
-				BEA_DBG_PRINT(b);
-				BEA_DBG_PRINT(" ");
-				Wire.write(b);
+			for (attempts = 0; attempts < BEA_I2C_ATTEMPTS; attempts++) {
+				Wire.beginTransmission(BEA_I2C_ADDRESS);
+				for (long int i = 0; i < chunk; i++) {
+					b = random(256);
+					BEA_DBG_PRINT(b);
+					BEA_DBG_PRINT(" ");
+					Wire.write(b);
+				}
+				if (Wire.endTransmission() == 0) {
+					break;
+				}
 			}
-			Wire.endTransmission();
+			if (attempts >= BEA_I2C_ATTEMPTS) {
+				BEA_DBG_PRINTLN();
+				Serial.print("ERROR: Could not write to slave device after ");
+				Serial.print(attempts);
+				Serial.println(" attempts");
+				return;
+			}
 		}
 		BEA_DBG_PRINTLN();
 
@@ -103,17 +120,29 @@ void loop()
 		BEA_DBG_PRINT("# Received: ");
 		for (long int j = byte_count; j > 0; j -= BUFFER_LENGTH) {
 			chunk = (j > BUFFER_LENGTH) ? BUFFER_LENGTH : j;
-			Wire.requestFrom(BEA_I2C_ADDRESS, chunk);
-			while (Wire.available()) {
-				b = Wire.read();
-				BEA_DBG_PRINT(b);
-				BEA_DBG_PRINT(" ");
-				for (int r = random(256) ^ b; r != 0; r >>= 1) {
-					if (r & 0x1) {
-						bit_err_count++;
+			for (attempts = 0; attempts < BEA_I2C_ATTEMPTS; attempts++) {
+				if (Wire.requestFrom(BEA_I2C_ADDRESS, chunk) <= 0) {
+					continue;
+				}
+				while (Wire.available()) {
+					b = Wire.read();
+					BEA_DBG_PRINT(b);
+					BEA_DBG_PRINT(" ");
+					for (int r = random(256) ^ b; r != 0; r >>= 1) {
+						if (r & 0x1) {
+							bit_err_count++;
+						}
 					}
 				}
-  			}
+				break;
+			}
+			if (attempts >= BEA_I2C_ATTEMPTS) {
+				BEA_DBG_PRINTLN();
+				Serial.print("ERROR: Could not read from slave device after ");
+				Serial.print(attempts);
+				Serial.println(" attempts");
+				return;
+			}
 		}
 		BEA_DBG_PRINTLN();
 
@@ -127,9 +156,4 @@ void loop()
 
 	Serial.println("# Experiment complete!");
 	Serial.println();
-
-	// Clear the serial receive buffer
-	while (Serial.available() != 0) {
-		(void) Serial.read();
-	}
 }

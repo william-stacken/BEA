@@ -31,13 +31,19 @@
 	#define BEA_DBG_PRINTLN(a)
 #endif
 
+/* The slave device I2C address */
 #define BEA_I2C_ADDRESS    (0x12)
 
+/* The pseudo-random number generator seed */
 #define BEA_RAND_SEED      (1234567)
 
+/* The default amount of pseudo-random bytes that will be sent between the devices in both directions */
 #define BEA_DEFAULT_LEN    (1000000)
 
-// Bus clock frequencies in Hz
+/* How many times the master will attempt to initiate I2C communication with the slave before giving up */
+#define BEA_I2C_ATTEMPTS   (10)
+
+/* Bus clock frequencies to experiment on in Hz */
 static const long int BEA_FREQs[] = {50000, 100000, 200000, 400000};
 
 #endif // BEA_INCLUDE_H_

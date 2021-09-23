@@ -18,6 +18,7 @@
 
   Modified 2012 by Todd Krein (todd@krein.org) to implement repeated starts
   Modified 2020 by Greyson Christoforo (grey@christoforo.net) to implement timeouts
+  Modified 2021 by William Stackenäs (w.stackenas@gmail.com) to ignore data nacks
 */
 
 #include <math.h>
@@ -246,7 +247,7 @@ uint8_t twi_readFrom(uint8_t address, uint8_t* data, uint8_t length, uint8_t sen
  * Output   0 .. success
  *          1 .. length to long for buffer
  *          2 .. address send, NACK received
- *          3 .. data send, NACK received
+ *          0 .. data send, NACK received
  *          4 .. other twi error (lost bus arbitration, bus error, ..)
  *          5 .. timeout
  */
@@ -324,7 +325,7 @@ uint8_t twi_writeTo(uint8_t address, uint8_t* data, uint8_t length, uint8_t wait
   else if (twi_error == TW_MT_SLA_NACK)
     return 2;	// error: address send, nack received
   else if (twi_error == TW_MT_DATA_NACK)
-    return 3;	// error: data send, nack received
+    return 0;	// error: data send, nack received (ignore)
   else
     return 4;	// other twi error
 }
@@ -514,6 +515,7 @@ ISR(TWI_vect)
     // Master Transmitter
     case TW_MT_SLA_ACK:  // slave receiver acked address
     case TW_MT_DATA_ACK: // slave receiver acked data
+    case TW_MT_DATA_NACK: // data sent, nack received (ignore)
       // if there is data to send, send it, otherwise stop 
       if(twi_masterBufferIndex < twi_masterBufferLength){
         // copy data to output register and ack
@@ -534,10 +536,6 @@ ISR(TWI_vect)
       break;
     case TW_MT_SLA_NACK:  // address sent, nack received
       twi_error = TW_MT_SLA_NACK;
-      twi_stop();
-      break;
-    case TW_MT_DATA_NACK: // data sent, nack received
-      twi_error = TW_MT_DATA_NACK;
       twi_stop();
       break;
     case TW_MT_ARB_LOST: // lost bus arbitration
@@ -647,7 +645,19 @@ ISR(TWI_vect)
         twi_reply(0);
       }
       break;
-    case TW_ST_DATA_NACK: // received nack, we are done 
+    case TW_ST_DATA_NACK: // received nack, we are done (if there is no data to send)
+      // if there is more to send, send it
+      if(twi_txBufferIndex < twi_txBufferLength){
+        // copy data to output register
+        TWDR = twi_txBuffer[twi_txBufferIndex++];
+        twi_reply(1);
+      }else{
+        // ack future responses
+        twi_reply(1);
+        // leave slave receiver state
+        twi_state = TWI_READY;
+      }
+      break;
     case TW_ST_LAST_DATA: // received ack, but we are done already!
       // ack future responses
       twi_reply(1);

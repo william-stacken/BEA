@@ -23,7 +23,7 @@
 static long int byte_count = 0;
 static long int bit_err_count = 0;
 
-static bool isRecv;
+static bool isRecv = false;
 
 void recvCallback(int howMany)
 {
