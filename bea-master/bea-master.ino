@@ -34,13 +34,13 @@ long int readInt()
 		if (c == '\n' || c == '\r') {
 			if (pos == 0) {
 				// empty string
-				return BEA_DEFAULT_LEN;
+				return -1;
 			} else {
 				break;
 			}
 		} else if (c > '9' || c < '0') {
 			// Bad integer
-			return BEA_DEFAULT_LEN;
+			return -1;
 		}
 		buf[pos] = c;
 	}
@@ -69,6 +69,7 @@ void loop()
 	long int chunk;
 	int attempts;
 	uint8_t b;
+	long int start, finish;
 
 	// Clear the serial receive buffer
 	while (Serial.available() != 0) {
@@ -80,8 +81,29 @@ void loop()
 	Serial.print(BEA_DEFAULT_LEN);
 	Serial.println(" bytes.");
 	byte_count = readInt();
+	if (byte_count < 0) {
+		byte_count = BEA_DEFAULT_LEN;
+	}
 
-	for (int f = 0; f < sizeof(BEA_FREQs) / sizeof(BEA_FREQs[0]); f++) {
+	Serial.println("# Enter the frequency id and press the enter key. The following frequencies are available.");
+	Serial.println("# id\tfrequence");
+	for (int i = 0; i < sizeof(BEA_FREQs) / sizeof(BEA_FREQs[0]); i++) {
+		Serial.print("# ");
+		Serial.print(i);
+		Serial.print("\t");
+		Serial.print(BEA_FREQs[i]);
+		Serial.println(" Hz");
+	}
+	Serial.println("# Or simply press enter for ALL frequencies.");
+	start = readInt();
+	if (start < 0 || start >= sizeof(BEA_FREQs) / sizeof(BEA_FREQs[0])) {
+		start = 0;
+		finish = sizeof(BEA_FREQs) / sizeof(BEA_FREQs[0]);
+	} else {
+		finish = start + 1;
+	}
+
+	for (int f = start; f < finish; f++) {
 		Wire.setClock(BEA_FREQs[f]);
 
 		// Write prng sequence to slave
