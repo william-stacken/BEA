@@ -69,7 +69,7 @@ void loop()
 	long int chunk;
 	int attempts;
 	uint8_t b;
-	int start, finish;
+	long int start, finish;
 
 	// Clear the serial receive buffer
 	while (Serial.available() != 0) {
