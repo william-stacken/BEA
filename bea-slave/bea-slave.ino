@@ -54,7 +54,7 @@ void sendCallback()
 {
 	uint8_t b;
 	long int chunk = (byte_count > BUFFER_LENGTH) ? BUFFER_LENGTH : byte_count;
-
+	Serial.println("Sending chunk.");
 	if (isRecv) {
 		BEA_DBG_PRINTLN();
 		Serial.print("# Recieve complete, sending ");
@@ -86,8 +86,9 @@ void setup()
 {
 	randomSeed(BEA_RAND_SEED);
 
-	Serial.begin(9600);
+	Serial.begin(115200);
 	Wire.begin(BEA_I2C_ADDRESS);
+	Wire.setWireTimeout(100000, false);
 	Wire.onReceive(recvCallback);
 	Wire.onRequest(sendCallback);
 
