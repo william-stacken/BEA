@@ -473,6 +473,7 @@ void twi_setTimeoutInMicros(uint32_t timeout, bool reset_with_timeout){
  * Output   none
  */
 void twi_handleTimeout(bool reset){
+  bea_timeouts++;
   twi_timed_out_flag = true;
 
   if (reset) {

@@ -46,4 +46,6 @@
 /* Bus clock frequencies to experiment on in Hz */
 static const long int BEA_FREQs[] = {50000, 100000, 200000, 400000};
 
+unsigned int bea_timeouts;
+
 #endif // BEA_INCLUDE_H_

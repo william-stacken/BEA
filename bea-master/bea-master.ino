@@ -59,6 +59,7 @@ void setup()
 	Serial.begin(115200);
 	Wire.begin();
 	Wire.setWireTimeout(100000, true);
+	bea_timeouts = 0;
 
 	Serial.println("# BEA master ready");
 }
@@ -174,6 +175,13 @@ void loop()
 			}
 		}
 		BEA_DBG_PRINTLN();
+
+		// Print resulting number of timeouts three times for redundancy
+		Serial.println("# Number of timeouts:");
+		Serial.println(bea_timeouts);
+		Serial.println(bea_timeouts);
+		Serial.println(bea_timeouts);
+		bea_timeouts = 0;
 
 		// Print resulting bit error count three times for redundancy
 		Serial.println("# Bit error count in slave sequence:");

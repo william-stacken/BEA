@@ -72,6 +72,13 @@ void sendCallback()
 	byte_count -= chunk;
 
 	if (byte_count <= 0) {
+		// Print resulting number of timeouts three times for redundancy
+		Serial.println("# Number of timeouts:");
+		Serial.println(bea_timeouts);
+		Serial.println(bea_timeouts);
+		Serial.println(bea_timeouts);
+		bea_timeouts = 0;
+
 		// Print resulting bit error count three times for redundancy
 		BEA_DBG_PRINTLN();
 		Serial.println("# Bit error count in master sequence:");
@@ -88,9 +95,10 @@ void setup()
 
 	Serial.begin(115200);
 	Wire.begin(BEA_I2C_ADDRESS);
-	Wire.setWireTimeout(100000, false);
+	Wire.setWireTimeout(100000, true);
 	Wire.onReceive(recvCallback);
 	Wire.onRequest(sendCallback);
+	bea_timeouts = 0;
 
 	Serial.println("# BEA slave ready");
 }
