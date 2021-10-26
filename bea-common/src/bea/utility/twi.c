@@ -40,6 +40,7 @@
 
 #include "pins_arduino.h"
 #include "twi.h"
+#include <bea.h>
 
 static volatile uint8_t twi_state;
 static volatile uint8_t twi_slarw;
@@ -85,9 +86,9 @@ void twi_init(void)
   twi_sendStop = true;		// default value
   twi_inRepStart = false;
   
-  // activate internal pullups for twi.
-  digitalWrite(SDA, 1);
-  digitalWrite(SCL, 1);
+  // deactivate internal pullups for twi.
+  digitalWrite(SDA, 0);
+  digitalWrite(SCL, 0);
 
   // initialize twi prescaler and bit rate
   cbi(TWSR, TWPS0);
@@ -254,71 +255,74 @@ uint8_t twi_readFrom(uint8_t address, uint8_t* data, uint8_t length, uint8_t sen
 uint8_t twi_writeTo(uint8_t address, uint8_t* data, uint8_t length, uint8_t wait, uint8_t sendStop)
 {
   uint8_t i;
+  uint8_t attempts = 0;
 
   // ensure data will fit into buffer
   if(TWI_BUFFER_LENGTH < length){
     return 1;
   }
 
-  // wait until twi is ready, become master transmitter
-  uint32_t startMicros = micros();
-  while(TWI_READY != twi_state){
-    if((twi_timeout_us > 0ul) && ((micros() - startMicros) > twi_timeout_us)) {
-      twi_handleTimeout(twi_do_reset_on_timeout);
-      return (5);
-    }
-  }
-  twi_state = TWI_MTX;
-  twi_sendStop = sendStop;
-  // reset error state (0xFF.. no error occurred)
-  twi_error = 0xFF;
-
-  // initialize buffer iteration vars
-  twi_masterBufferIndex = 0;
-  twi_masterBufferLength = length;
-  
-  // copy data to twi buffer
-  for(i = 0; i < length; ++i){
-    twi_masterBuffer[i] = data[i];
-  }
-  
-  // build sla+w, slave device address + w bit
-  twi_slarw = TW_WRITE;
-  twi_slarw |= address << 1;
-  
-  // if we're in a repeated start, then we've already sent the START
-  // in the ISR. Don't do it again.
-  //
-  if (true == twi_inRepStart) {
-    // if we're in the repeated start state, then we've already sent the start,
-    // (@@@ we hope), and the TWI statemachine is just waiting for the address byte.
-    // We need to remove ourselves from the repeated start state before we enable interrupts,
-    // since the ISR is ASYNC, and we could get confused if we hit the ISR before cleaning
-    // up. Also, don't enable the START interrupt. There may be one pending from the 
-    // repeated start that we sent ourselves, and that would really confuse things.
-    twi_inRepStart = false;			// remember, we're dealing with an ASYNC ISR
-    startMicros = micros();
-    do {
-      TWDR = twi_slarw;
+  do {
+    // wait until twi is ready, become master transmitter
+    uint32_t startMicros = micros();
+    while(TWI_READY != twi_state){
       if((twi_timeout_us > 0ul) && ((micros() - startMicros) > twi_timeout_us)) {
         twi_handleTimeout(twi_do_reset_on_timeout);
         return (5);
       }
-    } while(TWCR & _BV(TWWC));
-    TWCR = _BV(TWINT) | _BV(TWEA) | _BV(TWEN) | _BV(TWIE);	// enable INTs, but not START
-  } else {
-    // send start condition
-    TWCR = _BV(TWINT) | _BV(TWEA) | _BV(TWEN) | _BV(TWIE) | _BV(TWSTA);	// enable INTs
-  }
-
-  // wait for write operation to complete
-  startMicros = micros();
-  while(wait && (TWI_MTX == twi_state)){
-    if((twi_timeout_us > 0ul) && ((micros() - startMicros) > twi_timeout_us)) {
-      twi_handleTimeout(twi_do_reset_on_timeout);
-      return (5);
     }
-  }
+    twi_state = TWI_MTX;
+    twi_sendStop = sendStop;
+    // reset error state (0xFF.. no error occurred)
+    twi_error = 0xFF;
+
+    // initialize buffer iteration vars
+    twi_masterBufferIndex = 0;
+    twi_masterBufferLength = length;
+    
+    // copy data to twi buffer
+    for(i = 0; i < length; ++i){
+      twi_masterBuffer[i] = data[i];
+    }
+    
+    // build sla+w, slave device address + w bit
+    twi_slarw = TW_WRITE;
+    twi_slarw |= address << 1;
+    
+    // if we're in a repeated start, then we've already sent the START
+    // in the ISR. Don't do it again.
+    //
+    if (true == twi_inRepStart) {
+      // if we're in the repeated start state, then we've already sent the start,
+      // (@@@ we hope), and the TWI statemachine is just waiting for the address byte.
+      // We need to remove ourselves from the repeated start state before we enable interrupts,
+      // since the ISR is ASYNC, and we could get confused if we hit the ISR before cleaning
+      // up. Also, don't enable the START interrupt. There may be one pending from the 
+      // repeated start that we sent ourselves, and that would really confuse things.
+      twi_inRepStart = false;			// remember, we're dealing with an ASYNC ISR
+      startMicros = micros();
+      do {
+        TWDR = twi_slarw;
+        if((twi_timeout_us > 0ul) && ((micros() - startMicros) > twi_timeout_us)) {
+          twi_handleTimeout(twi_do_reset_on_timeout);
+          return (5);
+        }
+      } while(TWCR & _BV(TWWC));
+      TWCR = _BV(TWINT) | _BV(TWEA) | _BV(TWEN) | _BV(TWIE);	// enable INTs, but not START
+    } else {
+      // send start condition
+      TWCR = _BV(TWINT) | _BV(TWEA) | _BV(TWEN) | _BV(TWIE) | _BV(TWSTA);	// enable INTs
+    }
+
+    // wait for write operation to complete
+    startMicros = micros();
+    while(wait && (TWI_MTX == twi_state)){
+      if((twi_timeout_us > 0ul) && ((micros() - startMicros) > twi_timeout_us)) {
+        twi_handleTimeout(twi_do_reset_on_timeout);
+        return (5);
+      }
+    }
+  } while ((twi_error == TW_MT_SLA_NACK) && ++attempts < BEA_I2C_ATTEMPTS);
   
   if (twi_error == 0xFF)
     return 0;	// success
@@ -469,6 +473,7 @@ void twi_setTimeoutInMicros(uint32_t timeout, bool reset_with_timeout){
  * Output   none
  */
 void twi_handleTimeout(bool reset){
+  bea_timeouts++;
   twi_timed_out_flag = true;
 
   if (reset) {

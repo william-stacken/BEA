@@ -56,14 +56,17 @@ void setup()
 {
 	randomSeed(BEA_RAND_SEED);
 
-	Serial.begin(9600);
+	Serial.begin(115200);
 	Wire.begin();
+	Wire.setWireTimeout(100000, true);
+	bea_timeouts = 0;
 
 	Serial.println("# BEA master ready");
 }
 
 void loop()
 {
+	int ret;
 	long int byte_count;
 	long int bit_err_count = 0;
 	long int chunk;
@@ -115,23 +118,28 @@ void loop()
 		BEA_DBG_PRINT("# Sent: ");
 		for (long int j = byte_count; j > 0; j -= BUFFER_LENGTH) {
 			chunk = (j > BUFFER_LENGTH) ? BUFFER_LENGTH : j;
-			for (attempts = 0; attempts < BEA_I2C_ATTEMPTS; attempts++) {
-				Wire.beginTransmission(BEA_I2C_ADDRESS);
-				for (long int i = 0; i < chunk; i++) {
-					b = random(256);
-					BEA_DBG_PRINT(b);
-					BEA_DBG_PRINT(" ");
-					Wire.write(b);
-				}
-				if (Wire.endTransmission() == 0) {
-					break;
-				}
+			Serial.println("Sending chunk.");
+			Wire.beginTransmission(BEA_I2C_ADDRESS);
+			for (long int i = 0; i < chunk; i++) {
+				b = random(256);
+				BEA_DBG_PRINT(b);
+				BEA_DBG_PRINT(" ");
+				Wire.write(b);
 			}
-			if (attempts >= BEA_I2C_ATTEMPTS) {
+			ret = Wire.endTransmission();
+			switch (ret)
+			{
+			case 0:
+				break;
+			case 2:
 				BEA_DBG_PRINTLN();
 				Serial.print("ERROR: Could not write to slave device after ");
-				Serial.print(attempts);
+				Serial.print(BEA_I2C_ATTEMPTS);
 				Serial.println(" attempts");
+				return;
+			default:
+				Serial.print("ERROR: Wire.endTransmission() returned ");
+				Serial.println(ret);
 				return;
 			}
 		}
@@ -167,6 +175,13 @@ void loop()
 			}
 		}
 		BEA_DBG_PRINTLN();
+
+		// Print resulting number of timeouts three times for redundancy
+		Serial.println("# Number of timeouts:");
+		Serial.println(bea_timeouts);
+		Serial.println(bea_timeouts);
+		Serial.println(bea_timeouts);
+		bea_timeouts = 0;
 
 		// Print resulting bit error count three times for redundancy
 		Serial.println("# Bit error count in slave sequence:");
